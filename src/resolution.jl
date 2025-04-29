@@ -20,7 +20,7 @@ function cplexSolve(G::Matrix{Int})
                 end
             end
         end
-        println("Il faut ",n-1," marches.")
+        println("Théoriquement, il faut au maximum ",n-1," marches.")
 
     model = Model(CPLEX.Optimizer)
 
@@ -74,7 +74,7 @@ function cplexSolve(G::Matrix{Int})
     @constraint(model, [s in 1:n, i in 3:(l-2), j in 3:(c-2); G[i-2, j-2] == -1], x[s, i, j, 4] == 0)
     @constraint(model, [s in 1:n, i in 3:(l-2), j in 3:(c-2); G[i-2, j-2] == -1], x[s, i, j, 5] == 1) 
 
-    # ⭕，是动不了的棋子
+    # ⭕，是空
     @constraint(model, [i in 3:(l-2), j in 3:(c-2); G[i-2, j-2] == 0], x[1, i, j, 5] == 0) 
     # 🔴，是可以动的棋子
     @constraint(model, [i in 3:(l-2), j in 3:(c-2); G[i-2, j-2] == 1], x[1, i, j, 5] == 1) 
@@ -154,13 +154,151 @@ end
 """
 Heuristically solve an instance
 """
-function heuristicSolve()
+function heuristicSolve(G::Matrix{Int})
+    # 获取棋盘原始尺寸
+    rows, cols = size(G)
+    # 计算初始棋子数
+    n = sum(G .== 1)
+    println("Il faut au maximum ", n-1, " steps.")
 
-    # TODO
-    println("In file resolution.jl, in method heuristicSolve(), TODO: fix input and output, define the model")
+    l = rows + 4
+    c = cols + 4
+    # init
+    board = fill(-1, l, c)
+    for i in 1:rows
+        for j in 1:cols
+            board[i+2, j+2] = G[i, j]
+        end
+    end
     
-end 
-
+    # 初始化结果数组
+    res = fill(-1, n, rows, cols)
+    for i in 1:rows
+        for j in 1:cols
+            res[1, i, j] = G[i, j]
+        end
+    end
+    
+    # 合法方向：上、下、左、右
+    directions = [(-2, 0, -1, 0), (2, 0, 1, 0), (0, -2, 0, -1), (0, 2, 0, 1)]
+    
+    # 计算后续跳跃潜力
+    function evaluate_future_moves(temp_board, l, c)
+        future_moves = 0
+        for i in 3:(l-2)
+            for j in 3:(c-2)
+                if temp_board[i, j] != 1
+                    continue
+                end
+                for (di, dj, mi, mj) in directions
+                    ni, nj = i + di, j + dj
+                    mid_i, mid_j = i + mi, j + mj
+                    if 1 <= ni <= l && 1 <= nj <= c &&
+                        1 <= mid_i <= l && 1 <= mid_j <= c &&
+                        temp_board[mid_i, mid_j] == 1 && temp_board[ni, nj] == 0
+                        future_moves += 1
+                    end
+                end
+            end
+        end
+        return future_moves
+    end
+    
+    # 回溯搜索函数
+    function search(board, s, res, best_res, best_remaining, max_depth=n-1)
+        if s >= n || max_depth <= 0
+            remaining = sum(board[3:(l-2), 3:(c-2)] .== 1)
+            if remaining < best_remaining[1]
+                best_remaining[1] = remaining
+                for t in 1:n
+                    for i in 1:rows
+                        for j in 1:cols
+                            best_res[t, i, j] = res[t, i, j]
+                        end
+                    end
+                end
+            end
+            return
+        end
+        
+        # 收集可能的跳跃
+        possible_moves = []
+        for i in 3:(l-2)
+            for j in 3:(c-2)
+                if board[i, j] != 1
+                    continue
+                end
+                for (di, dj, mi, mj) in directions
+                    ni, nj = i + di, j + dj
+                    mid_i, mid_j = i + mi, j + mj
+                    if 1 <= ni <= l && 1 <= nj <= c &&
+                       1 <= mid_i <= l && 1 <= mid_j <= c &&
+                       board[mid_i, mid_j] == 1 && board[ni, nj] == 0
+                        # 计算启发式分数
+                        temp_board = copy(board)
+                        temp_board[i, j] = 0
+                        temp_board[mid_i, mid_j] = 0
+                        temp_board[ni, nj] = 1
+                        future_score = evaluate_future_moves(temp_board, l, c)
+                        center_dist = abs((ni - l/2)^2 + (nj - c/2)^2)
+                        score = future_score * 10 + 1 / (center_dist + 1)
+                        push!(possible_moves, (i, j, ni, nj, score))
+                    end
+                end
+            end
+        end
+        
+        if isempty(possible_moves)
+            # 无跳跃，复制当前状态
+            for t in (s+1):n
+                for i in 1:rows
+                    for j in 1:cols
+                        res[t, i, j] = res[s, i, j]
+                    end
+                end
+            end
+            remaining = sum(board[3:(l-2), 3:(c-2)] .== 1)
+            if remaining < best_remaining[1]
+                best_remaining[1] = remaining
+                for t in 1:n
+                    for i in 1:rows
+                        for j in 1:cols
+                            best_res[t, i, j] = res[t, i, j]
+                        end
+                    end
+                end
+            end
+            return
+        end
+        
+        # 按分数排序，尝试前几个跳跃
+        sort!(possible_moves, by=x->x[5], rev=true)
+        for (i, j, ni, nj, _) in possible_moves[1:min(3, length(possible_moves))]
+            # 执行跳跃
+            new_board = copy(board)
+            new_board[i, j] = 0
+            new_board[i + div(ni - i, 2), j + div(nj - j, 2)] = 0
+            new_board[ni, nj] = 1
+            # 更新 res
+            new_res = copy(res)
+            new_res[s+1, :, :] = new_board[3:(l-2), 3:(c-2)]
+            # 递归搜索
+            search(new_board, s+1, new_res, best_res, best_remaining, max_depth-1)
+        end
+    end
+    
+    # 初始化最佳结果
+    best_res = copy(res)
+    best_remaining = [n]  # 使用数组以便修改
+    # 运行搜索
+    search(board, 1, res, best_res, best_remaining)
+    
+    # 计算最终剩余棋子
+    remaining_pegs = best_remaining[1]
+    println("启发式方法剩余棋子数: ", remaining_pegs)
+    
+    return best_res, n, remaining_pegs == 1
+end
 """
 Solve all the instances contained in "../data" through CPLEX and heuristics
 
