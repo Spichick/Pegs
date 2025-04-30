@@ -43,7 +43,7 @@ function generateInstance(l::Int64, c::Int64, min_moves::Int64=2)
                             board[to_i, to_j] == '1' && # 终点必须有子
                             board[mid_i, mid_j] == '0' && # 中间格子必须是空
                             board[i, j] == '0' # 起点必须是空
-                            push!(possible_moves, (i,j,di,dj))
+                            push!(possible_moves, (i,j,di,dj,mid_i,mid_j))
                         end
                     end
                 end
@@ -55,14 +55,23 @@ function generateInstance(l::Int64, c::Int64, min_moves::Int64=2)
         end
         # 更新
         move = rand(possible_moves)
-        i, j, di, dj = move
+        i, j, di, dj, mid_i, mid_j = move
         board[i,j] = '1'
-        board[i + di ÷ 2, j + dj ÷ 2] = '1'
+        board[mid_i, mid_j] = '1'
         board[i + di, j + dj] = '0'
         
         move_count += 1
     end
+    # 统计 '1' 的数量
+    #num_pegs = sum(board .== '1')
+    #if num_pegs == 3
+    #    println("Faux")
+    #    return 0
+    #elseif num_pegs == 4
+    #    println("Vrai")
+    #end
     
+        
     # 保存到文件
     filename = "data/instance_$(l)_$(c)_$(min_moves).txt"
     open(filename, "w") do file
@@ -111,7 +120,7 @@ function generateInstanceWithIndex(l::Int64, c::Int64, min_moves::Int64=2, index
                             board[to_i, to_j] == '1' && # 终点必须有子
                             board[mid_i, mid_j] == '0' # 中间格子必须是空
                             board[i, j] == '0' # 起点必须是空
-                            push!(possible_moves, (i,j,di,dj))
+                            push!(possible_moves, (i,j,di,dj, mid_i, mid_j))
                         end
                     end
                 end
@@ -123,9 +132,9 @@ function generateInstanceWithIndex(l::Int64, c::Int64, min_moves::Int64=2, index
         end
         # 更新
         move = rand(possible_moves)
-        i, j, di, dj = move
+        i, j, di, dj, mid_i, mid_j = move
         board[i,j] = '1'
-        board[i + di ÷ 2, j + dj ÷ 2] = '1'
+        board[mid_i, mid_j] = '1'
         board[i + di, j + dj] = '0'
         
         move_count += 1
@@ -184,5 +193,12 @@ function generateDataSet() # 生成10个数据集
     end
 end
 
+function g() # 测试溢出 5x5,3: 01110
+    i=0
+    while(i<1000000)
+        i=i+1
+        generateInstance(5,5,3)
+    end
+end
 
 

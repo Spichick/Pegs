@@ -65,8 +65,8 @@ end
 
 function displaySolution(X::Matrix{Int64}) 
     # TODO:
-    out = @timed cplexSolve(X)[1]
-    #out = @timed heuristicSolve(X)[1]
+    #out = @timed cplexSolve(X)[1]
+    out = @timed heuristicSolve(X)[1]
     Y = out.value
     Ytime = out.time
 

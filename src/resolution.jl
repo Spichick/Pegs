@@ -183,19 +183,19 @@ function heuristicSolve(G::Matrix{Int})
     directions = [(-2, 0, -1, 0), (2, 0, 1, 0), (0, -2, 0, -1), (0, 2, 0, 1)]
     
     # 计算后续跳跃潜力
-    function evaluate_future_moves(temp_board, l, c)
+    function evaluate_future_moves(temp_board, l, c) 
         future_moves = 0
         for i in 3:(l-2)
             for j in 3:(c-2)
                 if temp_board[i, j] != 1
                     continue
                 end
-                for (di, dj, mi, mj) in directions
+                for (di, dj, mi, mj) in directions # 起始位置是1
                     ni, nj = i + di, j + dj
                     mid_i, mid_j = i + mi, j + mj
                     if 1 <= ni <= l && 1 <= nj <= c &&
                         1 <= mid_i <= l && 1 <= mid_j <= c &&
-                        temp_board[mid_i, mid_j] == 1 && temp_board[ni, nj] == 0
+                        temp_board[mid_i, mid_j] == 1 && temp_board[ni, nj] == 0 # 中间位置是1，终点位置是0
                         future_moves += 1
                     end
                 end
@@ -232,15 +232,15 @@ function heuristicSolve(G::Matrix{Int})
                     ni, nj = i + di, j + dj
                     mid_i, mid_j = i + mi, j + mj
                     if 1 <= ni <= l && 1 <= nj <= c &&
-                       1 <= mid_i <= l && 1 <= mid_j <= c &&
-                       board[mid_i, mid_j] == 1 && board[ni, nj] == 0
+                        1 <= mid_i <= l && 1 <= mid_j <= c &&
+                        board[mid_i, mid_j] == 1 && board[ni, nj] == 0
                         # 计算启发式分数
                         temp_board = copy(board)
                         temp_board[i, j] = 0
                         temp_board[mid_i, mid_j] = 0
                         temp_board[ni, nj] = 1
                         future_score = evaluate_future_moves(temp_board, l, c)
-                        center_dist = abs((ni - l/2)^2 + (nj - c/2)^2)
+                        center_dist = abs((ni - l/2)^2 + (nj - c/2)^2) # 鼓励棋子跳到中间位置(距离中心的平方)，因为棋子越靠近中心越有概率和其他棋子相互跳跃。
                         score = future_score * 10 + 1 / (center_dist + 1)
                         push!(possible_moves, (i, j, ni, nj, score))
                     end
@@ -298,118 +298,4 @@ function heuristicSolve(G::Matrix{Int})
     println("启发式方法剩余棋子数: ", remaining_pegs)
     
     return best_res, n, remaining_pegs == 1
-end
-"""
-Solve all the instances contained in "../data" through CPLEX and heuristics
-
-The results are written in "../res/cplex" and "../res/heuristic"
-
-Remark: If an instance has previously been solved (either by cplex or the heuristic) it will not be solved again
-"""
-function solveDataSet()
-
-    dataFolder = "../data/"
-    resFolder = "../res/"
-
-    # Array which contains the name of the resolution methods
-    resolutionMethod = ["cplex"]
-    #resolutionMethod = ["cplex", "heuristique"]
-
-    # Array which contains the result folder of each resolution method
-    resolutionFolder = resFolder .* resolutionMethod
-
-    # Create each result folder if it does not exist
-    for folder in resolutionFolder
-        if !isdir(folder)
-            mkdir(folder)
-        end
-    end
-            
-    global isOptimal = false
-    global solveTime = -1
-
-    # For each instance
-    # (for each file in folder dataFolder which ends by ".txt")
-    for file in filter(x->occursin(".txt", x), readdir(dataFolder))  
-        
-        println("-- Resolution of ", file)
-        readInputFile(dataFolder * file)
-
-        # TODO
-        println("In file resolution.jl, in method solveDataSet(), TODO: read value returned by readInputFile()")
-        
-        # For each resolution method
-        for methodId in 1:size(resolutionMethod, 1)
-            
-            outputFile = resolutionFolder[methodId] * "/" * file
-
-            # If the instance has not already been solved by this method
-            if !isfile(outputFile)
-                
-                fout = open(outputFile, "w")  
-
-                resolutionTime = -1
-                isOptimal = false
-                
-                # If the method is cplex
-                if resolutionMethod[methodId] == "cplex"
-                    
-                    # TODO 
-                    println("In file resolution.jl, in method solveDataSet(), TODO: fix cplexSolve() arguments and returned values")
-                    
-                    # Solve it and get the results
-                    isOptimal, resolutionTime = cplexSolve()
-                    
-                    # If a solution is found, write it
-                    if isOptimal
-                        # TODO
-                        println("In file resolution.jl, in method solveDataSet(), TODO: write cplex solution in fout") 
-                    end
-
-                # If the method is one of the heuristics
-                else
-                    
-                    isSolved = false
-
-                    # Start a chronometer 
-                    startingTime = time()
-                    
-                    # While the t is not solved and less than 100 seconds are elapsed
-                    while !isOptimal && resolutionTime < 100
-                        
-                        # TODO 
-                        println("In file resolution.jl, in method solveDataSet(), TODO: fix heuristicSolve() arguments and returned values")
-                        
-                        # Solve it and get the results
-                        isOptimal, resolutionTime = heuristicSolve()
-
-                        # Stop the chronometer
-                        resolutionTime = time() - startingTime
-                        
-                    end
-
-                    # Write the solution (if any)
-                    if isOptimal
-
-                        # TODO
-                        println("In file resolution.jl, in method solveDataSet(), TODO: write the heuristic solution in fout")
-                        
-                    end 
-                end
-
-                println(fout, "solveTime = ", resolutionTime) 
-                println(fout, "isOptimal = ", isOptimal)
-                
-                # TODO
-                println("In file resolution.jl, in method solveDataSet(), TODO: write the solution in fout") 
-                close(fout)
-            end
-
-
-            # Display the results obtained with the method on the current instance
-            include(outputFile)
-            println(resolutionMethod[methodId], " optimal: ", isOptimal)
-            println(resolutionMethod[methodId], " time: " * string(round(solveTime, sigdigits=2)) * "s\n")
-        end         
-    end 
 end
