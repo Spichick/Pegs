@@ -4,6 +4,8 @@
 
 ## How to run:
 
+    cd ./PEGS
+    
     julia
 
     include("main.jl")
