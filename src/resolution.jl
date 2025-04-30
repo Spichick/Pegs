@@ -250,14 +250,13 @@ function heuristicSolve(G::Matrix{Int})
             end
         end
 
-        
-        # 按分数排序，尝试前几个跳跃
-        sort!(possible_moves, by=x->x[5], rev=true)
-        for (i, j, ni, nj, _) in possible_moves[1:min(3, length(possible_moves))]
+        # 3. 按分数排序，尝试前几个跳跃
+        sort!(possible_moves, by=x->x[5], rev=true) # 根据第五个元素即score排序, rev: 降序
+        for (i, j, ni, nj, _) in possible_moves[1:min(3, length(possible_moves))] # 只尝试前3个跳跃，加速
             # 执行跳跃
             new_board = copy(board)
             new_board[i, j] = 0
-            new_board[i + div(ni - i, 2), j + div(nj - j, 2)] = 0
+            new_board[i + div(ni - i, 2), j + div(nj - j, 2)] = 0 # 中间位置
             new_board[ni, nj] = 1
             # 更新 res
             new_res = copy(res)
