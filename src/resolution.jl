@@ -179,13 +179,13 @@ function heuristicSolve(G::Matrix{Int})
         end
     end
     
-    # 合法方向：上、下、左、右
+    # 合法方向：上、下、左、右, (di,dj): 起始位置到目标位置, (mi,mj): 起始位置到中间位置
     directions = [(-2, 0, -1, 0), (2, 0, 1, 0), (0, -2, 0, -1), (0, 2, 0, 1)]
     
     # 计算后续跳跃潜力
     function evaluate_future_moves(temp_board, l, c) 
         future_moves = 0
-        for i in 3:(l-2)
+        for i in 3:(l-2) # 遍历棋盘内的点，记录所有可能的跳跃
             for j in 3:(c-2)
                 if temp_board[i, j] != 1
                     continue
@@ -206,9 +206,10 @@ function heuristicSolve(G::Matrix{Int})
     
     # 回溯搜索函数
     function search(board, s, res, best_res, best_remaining, max_depth=n-1)
+        ### 1. 终止条件
         if s >= n || max_depth <= 0
             remaining = sum(board[3:(l-2), 3:(c-2)] .== 1)
-            if remaining < best_remaining[1]
+            if remaining < best_remaining[1] # objective: 最小化剩余棋子数
                 best_remaining[1] = remaining
                 for t in 1:n
                     for i in 1:rows
@@ -220,7 +221,8 @@ function heuristicSolve(G::Matrix{Int})
             end
             return
         end
-        
+
+        ### 2. 计算可能的条约
         # 收集可能的跳跃
         possible_moves = []
         for i in 3:(l-2)
@@ -247,29 +249,7 @@ function heuristicSolve(G::Matrix{Int})
                 end
             end
         end
-        
-        if isempty(possible_moves)
-            # 无跳跃，复制当前状态
-            for t in (s+1):n
-                for i in 1:rows
-                    for j in 1:cols
-                        res[t, i, j] = res[s, i, j]
-                    end
-                end
-            end
-            remaining = sum(board[3:(l-2), 3:(c-2)] .== 1)
-            if remaining < best_remaining[1]
-                best_remaining[1] = remaining
-                for t in 1:n
-                    for i in 1:rows
-                        for j in 1:cols
-                            best_res[t, i, j] = res[t, i, j]
-                        end
-                    end
-                end
-            end
-            return
-        end
+
         
         # 按分数排序，尝试前几个跳跃
         sort!(possible_moves, by=x->x[5], rev=true)
