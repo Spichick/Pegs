@@ -15,6 +15,7 @@
     generateInstance(5,5,20) 
 
 ### If you want to generate 10 random instances.
+
     generateDataSet() 
 
 ### If you want to display the instance's matrix.
